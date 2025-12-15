@@ -1,0 +1,49 @@
+/* Custom styles for Notifications Modal */
+.notificationsModal {
+  position: fixed !important;
+  top: auto !important;
+  left: auto !important;
+  transform: none !important;
+}
+
+.notificationsModal .ant-modal-content {
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e5e7eb;
+}
+
+/* Custom tab styles */
+.notifications-tabs .ant-tabs-tab {
+  color: #9ca3af !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  margin-right: 24px !important;
+}
+
+.notifications-tabs .ant-tabs-tab-active {
+  color: #111827 !important;
+  font-weight: 600 !important;
+}
+
+.notifications-tabs .ant-tabs-ink-bar {
+  background: #f56738 !important;
+  height: 2px !important;
+}
+
+.notifications-tabs .ant-tabs-content-holder {
+  padding: 0 !important;
+}
+
+.notifications-tabs .ant-tabs-tabpane {
+  padding: 0 !important;
+}
+
+/* Remove default modal mask */
+.notificationsModal + .ant-modal-mask {
+  display: none;
+}
+
+/* Ensure modal appears above other elements */
+.notificationsModal {
+  z-index: 1050;
+}

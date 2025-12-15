@@ -1,0 +1,207 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), sans-serif;
+}
+
+/* Custom Ant Design Menu Styles */
+.ant-menu-item-selected {
+  background-color: #ffffff !important;
+  color: #0d9488 !important;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+}
+
+.ant-menu-item-selected .anticon {
+  color: #0d9488 !important;
+}
+
+.ant-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Remove default menu borders */
+.ant-menu-inline {
+  border-inline-end: none !important;
+}
+
+/* Custom Table Styles */
+.ant-table-thead > tr > th {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  border-top: none !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+}
+
+.ant-table-tbody > tr > td {
+  border-bottom: 1px solid #f3f4f6 !important;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background-color: #f9fafb !important;
+}
+
+/* Custom Tabs Styles - Force 24px spacing */
+.ant-tabs-tab {
+  padding: 8px 0 !important;
+  margin-right: 24px !important;
+  margin-left: 0 !important;
+}
+
+.ant-tabs-nav .ant-tabs-tab {
+  margin-right: 24px !important;
+  margin-left: 0 !important;
+}
+
+.ant-tabs-nav-list .ant-tabs-tab {
+  margin-right: 24px !important;
+  margin-left: 0 !important;
+}
+
+/* More specific selectors for different contexts */
+.ant-tabs .ant-tabs-tab {
+  margin-right: 24px !important;
+  margin-left: 0 !important;
+}
+
+.ant-tabs-top .ant-tabs-tab {
+  margin-right: 24px !important;
+  margin-left: 0 !important;
+}
+
+.ant-tabs-top > .ant-tabs-nav .ant-tabs-tab {
+  margin-right: 24px !important;
+  margin-left: 0 !important;
+}
+
+/* For notifications modal specifically */
+.notifications-tabs .ant-tabs-tab {
+  margin-right: 24px !important;
+  margin-left: 0 !important;
+}
+
+/* Override any default Ant Design spacing */
+.ant-tabs-nav-list {
+  gap: 0 !important;
+}
+
+.ant-tabs-nav-list .ant-tabs-tab:not(:last-child) {
+  margin-right: 24px !important;
+}
+
+.ant-tabs-nav-list .ant-tabs-tab:last-child {
+  margin-right: 0 !important;
+}
+
+.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #f56738 !important;
+  font-weight: 600 !important;
+}
+
+.ant-tabs-ink-bar {
+  background: #f56738 !important;
+}
+
+/* Filter Drawer Styles */
+.filter-drawer .ant-drawer-body {
+  padding: 24px !important;
+}
+
+.filter-collapse .ant-collapse-item {
+  border: none !important;
+  margin-bottom: 16px !important;
+}
+
+.filter-collapse .ant-collapse-header {
+  padding: 16px 0 !important;
+  border-bottom: 1px solid #f0f0f0 !important;
+  background: transparent !important;
+}
+
+.filter-collapse .ant-collapse-content {
+  border: none !important;
+  background: transparent !important;
+}
+
+.filter-collapse .ant-collapse-content-box {
+  padding: 16px 0 0 0 !important;
+}
+
+.filter-collapse .ant-checkbox-wrapper {
+  display: flex !important;
+  align-items: center !important;
+  margin-bottom: 12px !important;
+}
+
+.filter-collapse .ant-checkbox-wrapper:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Details Page Styles */
+.ant-breadcrumb {
+  font-size: 14px !important;
+}
+
+.ant-breadcrumb-link {
+  color: #6b7280 !important;
+}
+
+.ant-breadcrumb-separator {
+  color: #9ca3af !important;
+}
+
+/* Table Row Hover */
+.ant-table-tbody > tr:hover {
+  cursor: pointer !important;
+}
+
+/* Chat Styles */
+.chat-message-client {
+  background-color: #e5e7eb !important;
+  color: #374151 !important;
+}
+
+.chat-message-bot,
+.chat-message-agent {
+  background-color: #fb923c !important;
+  color: #ffffff !important;
+}
+
+.chat-input-area {
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.chat-messages-container {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db #f9fafb;
+}
+
+.chat-messages-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages-container::-webkit-scrollbar-track {
+  background: #f9fafb;
+}
+
+.chat-messages-container::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.chat-messages-container::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
