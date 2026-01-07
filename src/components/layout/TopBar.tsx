@@ -1,67 +1,18 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import { Avatar, Badge, Button, Dropdown, Space, Typography } from 'antd';
+import React from 'react';
+import { Avatar, Dropdown, Typography } from 'antd';
 import { 
-  BellOutlined, 
   DownOutlined, 
-  AppstoreOutlined,
   UserOutlined 
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import AppImage from '@/components/ui/AppImage';
-import AppsModal from '@/components/ui/AppsModal';
-import NotificationsModal from '@/components/ui/NotificationsModal';
 import { IMAGES } from '@/utils/images';
 
 const { Text } = Typography;
 
 const TopBar = () => {
-  const [appsModalVisible, setAppsModalVisible] = useState(false);
-  const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
-  const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
-  const [notificationsPosition, setNotificationsPosition] = useState({ top: 0, left: 0 });
-  const appsButtonRef = useRef<HTMLButtonElement>(null);
-  const notificationsButtonRef = useRef<HTMLButtonElement>(null);
-
-  const handleAppsClick = () => {
-    // Close notifications modal if open
-    setNotificationsModalVisible(false);
-    
-    if (appsButtonRef.current) {
-      const rect = appsButtonRef.current.getBoundingClientRect();
-      const topBarHeight = 64; // Height of the topbar (h-16 = 64px)
-      setModalPosition({
-        top: topBarHeight + 8, // 8px below the topbar
-        left: Math.max(16, rect.left - 16), // Align to the left with some offset, but not less than 16px from edge
-      });
-    }
-    setAppsModalVisible(true);
-  };
-
-  const handleAppsModalClose = () => {
-    setAppsModalVisible(false);
-  };
-
-  const handleNotificationsClick = () => {
-    // Close apps modal if open
-    setAppsModalVisible(false);
-    
-    if (notificationsButtonRef.current) {
-      const rect = notificationsButtonRef.current.getBoundingClientRect();
-      const topBarHeight = 64; // Height of the topbar (h-16 = 64px)
-      setNotificationsPosition({
-        top: topBarHeight + 8, // 8px below the topbar
-        left: Math.max(16, rect.right - 400), // Align to the right of the button, but ensure modal fits on screen
-      });
-    }
-    setNotificationsModalVisible(true);
-  };
-
-  const handleNotificationsModalClose = () => {
-    setNotificationsModalVisible(false);
-  };
-
   // User profile dropdown menu
   const userMenuItems: MenuProps['items'] = [
     {
@@ -80,7 +31,7 @@ const TopBar = () => {
 
   return (
     <div className="h-16 bg-white border-b border-gray-200 px-6 flex items-center justify-between">
-      {/* Left side - Logo and Apps */}
+      {/* Left side - Logo only */}
       <div className="flex items-center space-x-3">
         {/* Logo */}
         <div className="flex items-center">
@@ -93,7 +44,8 @@ const TopBar = () => {
           />
         </div>
 
-        {/* Apps Button */}
+        {/* Apps Button - Hidden for v1 */}
+        {/* 
         <Button 
           ref={appsButtonRef}
           type="text" 
@@ -107,11 +59,13 @@ const TopBar = () => {
             height={24}
           />
         </Button>
+        */}
       </div>
 
-      {/* Right side - Notifications and User */}
+      {/* Right side - User only */}
       <div className="flex items-center space-x-3">
-        {/* Notifications */}
+        {/* Notifications - Hidden for v1 */}
+        {/* 
         <Badge count={3} showZero={false}>
           <Button 
             ref={notificationsButtonRef}
@@ -122,6 +76,7 @@ const TopBar = () => {
             <BellOutlined style={{ fontSize: '24px' }} />
           </Button>
         </Badge>
+        */}
 
         {/* User Info */}
         <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
@@ -144,19 +99,20 @@ const TopBar = () => {
         </Dropdown>
       </div>
 
-      {/* Apps Modal */}
+      {/* Modals - Hidden for v1 */}
+      {/* 
       <AppsModal
         visible={appsModalVisible}
         onClose={handleAppsModalClose}
         position={modalPosition}
       />
 
-      {/* Notifications Modal */}
       <NotificationsModal
         visible={notificationsModalVisible}
         onClose={handleNotificationsModalClose}
         position={notificationsPosition}
       />
+      */}
     </div>
   );
 };

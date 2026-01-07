@@ -207,3 +207,25 @@ body {
 .chat-messages-container::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
+/* Mobile Drawer Styles */
+.mobile-drawer .ant-drawer-content {
+  background-color: #F2F4F8 !important;
+}
+
+.mobile-drawer .ant-drawer-body {
+  padding: 0 !important;
+  background-color: #F2F4F8 !important;
+}
+
+/* Mobile Menu Styles */
+@media (max-width: 767px) {
+  .ant-menu-item {
+    font-size: 16px !important;
+    height: 48px !important;
+    line-height: 48px !important;
+  }
+  
+  .ant-menu-item .anticon {
+    font-size: 20px !important;
+  }
+}

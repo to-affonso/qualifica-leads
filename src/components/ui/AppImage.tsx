@@ -42,6 +42,8 @@ const AppImage = ({
       className={className}
       onError={handleError}
       priority={priority}
+      // Add unoptimized for static export compatibility
+      unoptimized={true}
     />
   );
 };

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Typography, 
   Button, 
@@ -180,13 +180,13 @@ const mockChatMessages = [
   }
 ];
 
-const AtendimentoDetalhesPage = () => {
+const AtendimentoDetalhesContent = () => {
   const router = useRouter();
-  const params = useParams();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState('detalhes');
   const [messageText, setMessageText] = useState('');
   
-  const leadId = params.id as string;
+  const leadId = searchParams.get('id') || '1'; // Default to '1' if no ID provided
   const leadData = mockLeadData[leadId as keyof typeof mockLeadData];
 
   // Property Card Component for Interest Tab
@@ -899,6 +899,23 @@ const AtendimentoDetalhesPage = () => {
         )}
       </div>
     </MainLayout>
+  );
+};
+
+const AtendimentoDetalhesPage = () => {
+  return (
+    <Suspense fallback={
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Carregando detalhes do atendimento...</p>
+          </div>
+        </div>
+      </MainLayout>
+    }>
+      <AtendimentoDetalhesContent />
+    </Suspense>
   );
 };
 

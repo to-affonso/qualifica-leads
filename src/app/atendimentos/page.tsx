@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Typography, 
   Input, 
@@ -12,117 +12,130 @@ import {
   Collapse,
   Checkbox,
   DatePicker,
-  Space
+  Space,
+  Spin,
+  Alert
 } from 'antd';
 import { 
   SearchOutlined, 
   FilterOutlined,
-  UnorderedListOutlined,
-  AppstoreOutlined,
   UpOutlined,
   DownOutlined
 } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
+import { 
+  loadLeadsData, 
+  countLeadsByStatus, 
+  countLeadsByBusinessType, 
+  countLeadsBySource,
+  TransformedLead,
+  LeadData 
+} from '@/utils/leadsData';
 
 const { Title } = Typography;
 
-// Mock data for the table
-const mockData = [
-  {
-    key: '1',
-    nome: 'Aparecida Silva',
-    telefone: '(11) 99547-6974',
-    status: 'Em atendimento',
-    tipoNegocio: 'Compra',
-    origem: 'WhatsApp',
-    ultimoContato: '15/08/2024\n14:30',
-  },
-  {
-    key: '2',
-    nome: 'Benedito Mariano',
-    telefone: '(13) 98765-4321',
-    status: 'Concluído',
-    tipoNegocio: 'Locação',
-    origem: 'WhatsApp',
-    ultimoContato: '14/08/2024\n16:15',
-  },
-  {
-    key: '3',
-    nome: 'Cássia Albuquerque',
-    telefone: '(21) 99978-5432',
-    status: 'Em atendimento',
-    tipoNegocio: 'Compra',
-    origem: 'Site imobiliária',
-    ultimoContato: '14/08/2024\n09:45',
-  },
-  {
-    key: '4',
-    nome: 'Demétrio Freitas',
-    telefone: '(31) 98642-9753',
-    status: 'Ajuda solicitada',
-    tipoNegocio: 'Locação',
-    origem: 'Facebook Ads',
-    ultimoContato: '13/08/2024\n19:00',
-  },
-  {
-    key: '5',
-    nome: 'Estela Camargo',
-    telefone: '(41) 97531-8642',
-    status: 'Intervenção humana',
-    tipoNegocio: 'Compra',
-    origem: 'OLX',
-    ultimoContato: '12/08/2024\n11:22',
-  },
-  {
-    key: '6',
-    nome: 'Fabrício Cunha',
-    telefone: '(47) 99988-7766',
-    status: 'Número inválido',
-    tipoNegocio: 'Locação',
-    origem: 'Chaves na mão',
-    ultimoContato: '11/08/2024\n18:50',
-  },
-  {
-    key: '7',
-    nome: 'Graça Pimenta',
-    telefone: '(51) 98999-0011',
-    status: 'Sem resposta',
-    tipoNegocio: 'Compra',
-    origem: 'Site imobiliária',
-    ultimoContato: '10/08/2024\n10:00',
-  },
-  {
-    key: '8',
-    nome: 'Henrique Azevedo',
-    telefone: '(61) 97766-5544',
-    status: 'Concluído',
-    tipoNegocio: 'Locação',
-    origem: 'Facebook Ads',
-    ultimoContato: '09/08/2024\n17:30',
-  },
-  {
-    key: '9',
-    nome: 'Isabel Macedo',
-    telefone: '(71) 96655-4433',
-    status: 'Em atendimento',
-    tipoNegocio: 'Compra',
-    origem: 'OLX',
-    ultimoContato: '08/08/2024\n12:45',
-  },
-];
-
 const AtendimentosPage = () => {
   const router = useRouter();
+  
+  // Estados para dados e carregamento
+  const [mockData, setMockData] = useState<TransformedLead[]>([]);
+  const [originalData, setOriginalData] = useState<LeadData[]>([]);
+  const [filteredData, setFilteredData] = useState<TransformedLead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Estados para contadores dinâmicos
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [businessTypeCounts, setBusinessTypeCounts] = useState<Record<string, number>>({});
+  const [sourceCounts, setSourceCounts] = useState<Record<string, number>>({});
+  
+  // Estados existentes
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('todos');
-  const [viewMode, setViewMode] = useState('table'); // 'table' or 'kanban'
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Filter states
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
   const [selectedTipoNegocio, setSelectedTipoNegocio] = useState<string[]>([]);
   const [selectedOrigem, setSelectedOrigem] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<[any, any] | null>(null);
+
+  // Carregar dados do JSON
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Transformar dados usando a função existente
+        const data = await loadLeadsData();
+        setMockData(data);
+        setFilteredData(data);
+        
+        // Carregar dados originais separadamente
+        const response = await fetch('/db/leads_mock.json');
+        if (response.ok) {
+          const originalLeads: LeadData[] = await response.json();
+          setOriginalData(originalLeads);
+        }
+        
+        // Calcular contadores
+        setStatusCounts(countLeadsByStatus(data));
+        setBusinessTypeCounts(countLeadsByBusinessType(data));
+        setSourceCounts(countLeadsBySource(data));
+        
+      } catch (err) {
+        console.error('Erro ao carregar dados:', err);
+        setError('Erro ao carregar dados dos atendimentos. Tente novamente.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Filtrar dados baseado na aba ativa e termo de busca
+  useEffect(() => {
+    if (mockData.length === 0) return;
+    
+    let filtered = [...mockData];
+
+    // Filtrar por aba
+    switch (activeTab) {
+      case 'interesse-visita':
+        filtered = filtered.filter(lead => {
+          const originalLead = originalData.find(orig => orig.leadId === lead.key);
+          return originalLead?.visitInterest === 'Sim';
+        });
+        break;
+      case 'incompletos':
+        filtered = filtered.filter(lead => 
+          lead.status === 'Ajuda solicitada' || lead.status === 'Intervenção humana'
+        );
+        break;
+      case 'sem-resposta':
+        filtered = filtered.filter(lead => lead.status === 'Sem resposta');
+        break;
+      default:
+        // 'todos' - não filtra
+        break;
+    }
+
+    // Filtrar por termo de busca
+    if (searchTerm) {
+      filtered = filtered.filter(lead =>
+        lead.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.telefone.includes(searchTerm) ||
+        lead.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.tipoNegocio.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.origem.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    setFilteredData(filtered);
+  }, [activeTab, searchTerm, mockData, originalData]);
 
   // Status tag colors and styles
   const getStatusStyle = (status: string) => {
@@ -151,12 +164,12 @@ const AtendimentosPage = () => {
       dataIndex: 'nome',
       key: 'nome',
       width: 200,
-    },
-    {
-      title: 'Telefone',
-      dataIndex: 'telefone',
-      key: 'telefone',
-      width: 150,
+      render: (nome: string, record: TransformedLead) => (
+        <div>
+          <div className="font-medium text-gray-900">{nome}</div>
+          <div className="text-sm" style={{ color: '#697077' }}>{record.telefone}</div>
+        </div>
+      ),
     },
     {
       title: 'Status',
@@ -179,21 +192,76 @@ const AtendimentosPage = () => {
       width: 150,
     },
     {
+      title: 'Tipo de imóvel',
+      dataIndex: 'tipoImovel',
+      key: 'tipoImovel',
+      width: 150,
+      render: (_: any, record: TransformedLead) => {
+        if (!originalData.length) return '-';
+        const originalLead = originalData.find(orig => orig.leadId === record.key);
+        return originalLead?.propertyType || '-';
+      },
+    },
+    {
+      title: 'Interesse em visita',
+      dataIndex: 'interesseVisita',
+      key: 'interesseVisita',
+      width: 150,
+      render: (_: any, record: TransformedLead) => {
+        if (!originalData.length) return '-';
+        const originalLead = originalData.find(orig => orig.leadId === record.key);
+        return originalLead?.visitInterest || '-';
+      },
+    },
+    {
       title: 'Origem',
       dataIndex: 'origem',
       key: 'origem',
       width: 150,
     },
     {
+      title: 'Primeiro contato',
+      dataIndex: 'primeiroContato',
+      key: 'primeiroContato',
+      width: 150,
+      render: (_: any, record: TransformedLead) => {
+        if (!originalData.length) return '-';
+        const originalLead = originalData.find(orig => orig.leadId === record.key);
+        if (!originalLead?.creationDate) return '-';
+        
+        try {
+          const date = new Date(originalLead.creationDate);
+          const day = date.getDate().toString().padStart(2, '0');
+          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+          const year = date.getFullYear();
+          const hours = date.getHours().toString().padStart(2, '0');
+          const minutes = date.getMinutes().toString().padStart(2, '0');
+          
+          return (
+            <div className="text-sm">
+              <div className="text-gray-900">{`${day}/${month}/${year}`}</div>
+              <div style={{ color: '#697077' }}>{`${hours}:${minutes}`}</div>
+            </div>
+          );
+        } catch (error) {
+          return '-';
+        }
+      },
+    },
+    {
       title: 'Último contato',
       dataIndex: 'ultimoContato',
       key: 'ultimoContato',
       width: 150,
-      render: (text: string) => (
-        <div className="whitespace-pre-line text-sm">
-          {text}
-        </div>
-      ),
+      render: (text: string) => {
+        const [datePart, timePart] = text.split('\n');
+        return (
+          <div className="text-sm">
+            <div className="text-gray-900">{datePart}</div>
+            <div style={{ color: '#697077' }}>{timePart}</div>
+          </div>
+        );
+      },
     },
   ];
 
@@ -204,12 +272,16 @@ const AtendimentosPage = () => {
       label: 'Todos',
     },
     {
-      key: 'em-andamento',
-      label: 'Em andamento',
+      key: 'interesse-visita',
+      label: 'Interesse em visita',
     },
     {
-      key: 'finalizados',
-      label: 'Finalizados',
+      key: 'incompletos',
+      label: 'Atendimentos incompletos',
+    },
+    {
+      key: 'sem-resposta',
+      label: 'Sem resposta',
     },
   ];
 
@@ -231,6 +303,8 @@ const AtendimentosPage = () => {
                 prefix={<SearchOutlined className="text-gray-400" />}
                 className="h-10"
                 style={{ maxWidth: 400 }}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <Button
@@ -242,47 +316,53 @@ const AtendimentosPage = () => {
             </Button>
           </div>
 
-          {/* Tabs and View Toggle Row */}
-          <div className="flex items-center justify-between">
+          {/* Tabs Row */}
+          <div className="flex items-center">
             <Tabs
               activeKey={activeTab}
               onChange={setActiveTab}
               items={tabItems}
               className="flex-1 custom-tabs-spacing"
             />
-            <div className="flex items-center gap-2">
-              <Button
-                type={viewMode === 'table' ? 'primary' : 'text'}
-                icon={<UnorderedListOutlined />}
-                onClick={() => setViewMode('table')}
-                className="w-10 h-10 !p-0 flex items-center justify-center"
-              />
-              <Button
-                type={viewMode === 'kanban' ? 'primary' : 'text'}
-                icon={<AppstoreOutlined />}
-                onClick={() => setViewMode('kanban')}
-                className="w-10 h-10 !p-0 flex items-center justify-center"
-              />
-            </div>
           </div>
         </div>
 
         {/* Scrollable Table Section */}
         <div className="flex-1 overflow-hidden bg-white px-6">
-          <Table
-            columns={columns}
-            dataSource={mockData}
-            pagination={false}
-            scroll={{ y: 'calc(100vh - 280px)' }}
-            className="h-full"
-            size="middle"
-            onRow={(record) => ({
-              onClick: () => {
-                router.push(`/atendimentos/${record.key}`);
-              },
-              style: { cursor: 'pointer' }
-            })}
-          />
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <Spin size="large" />
+            </div>
+          ) : error ? (
+            <div className="flex justify-center items-center h-64">
+              <Alert
+                message="Erro ao carregar dados"
+                description={error}
+                type="error"
+                showIcon
+                action={
+                  <Button size="small" onClick={() => window.location.reload()}>
+                    Tentar novamente
+                  </Button>
+                }
+              />
+            </div>
+          ) : (
+            <Table
+              columns={columns}
+              dataSource={filteredData}
+              pagination={false}
+              scroll={{ y: 'calc(100vh - 280px)' }}
+              className="h-full"
+              size="middle"
+              onRow={(record) => ({
+                onClick: () => {
+                  router.push(`/atendimentos/detalhes?id=${record.key}`);
+                },
+                style: { cursor: 'pointer' }
+              })}
+            />
+          )}
         </div>
 
         {/* Filter Drawer */}
@@ -320,7 +400,7 @@ const AtendimentosPage = () => {
                       }
                     }}
                   >
-                    <span className="text-gray-700">Em atendimento (04)</span>
+                    <span className="text-gray-700">Em atendimento ({statusCounts['Em atendimento'] || 0})</span>
                   </Checkbox>
                   
                   <Checkbox
@@ -333,7 +413,7 @@ const AtendimentosPage = () => {
                       }
                     }}
                   >
-                    <span className="text-gray-700">Concluído (76)</span>
+                    <span className="text-gray-700">Concluído ({statusCounts['Concluído'] || 0})</span>
                   </Checkbox>
                   
                   <Checkbox
@@ -346,7 +426,7 @@ const AtendimentosPage = () => {
                       }
                     }}
                   >
-                    <span className="text-gray-700">Ajuda solicitada (01)</span>
+                    <span className="text-gray-700">Ajuda solicitada ({statusCounts['Ajuda solicitada'] || 0})</span>
                   </Checkbox>
                   
                   <Checkbox
@@ -359,7 +439,7 @@ const AtendimentosPage = () => {
                       }
                     }}
                   >
-                    <span className="text-gray-700">Sem resposta (14)</span>
+                    <span className="text-gray-700">Sem resposta ({statusCounts['Sem resposta'] || 0})</span>
                   </Checkbox>
                   
                   <Checkbox
@@ -372,7 +452,7 @@ const AtendimentosPage = () => {
                       }
                     }}
                   >
-                    <span className="text-gray-700">Número inválido (07)</span>
+                    <span className="text-gray-700">Número inválido ({statusCounts['Número inválido'] || 0})</span>
                   </Checkbox>
                   
                   <Checkbox
@@ -385,7 +465,7 @@ const AtendimentosPage = () => {
                       }
                     }}
                   >
-                    <span className="text-gray-700">Intervenção humana (01)</span>
+                    <span className="text-gray-700">Intervenção humana ({statusCounts['Intervenção humana'] || 0})</span>
                   </Checkbox>
                 </div>
               </Collapse.Panel>
@@ -397,31 +477,21 @@ const AtendimentosPage = () => {
                 className="!border-0"
               >
                 <div className="space-y-3 pl-0">
-                  <Checkbox
-                    checked={selectedTipoNegocio.includes('Compra')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedTipoNegocio([...selectedTipoNegocio, 'Compra']);
-                      } else {
-                        setSelectedTipoNegocio(selectedTipoNegocio.filter(t => t !== 'Compra'));
-                      }
-                    }}
-                  >
-                    <span className="text-gray-700">Compra</span>
-                  </Checkbox>
-                  
-                  <Checkbox
-                    checked={selectedTipoNegocio.includes('Locação')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedTipoNegocio([...selectedTipoNegocio, 'Locação']);
-                      } else {
-                        setSelectedTipoNegocio(selectedTipoNegocio.filter(t => t !== 'Locação'));
-                      }
-                    }}
-                  >
-                    <span className="text-gray-700">Locação</span>
-                  </Checkbox>
+                  {Object.entries(businessTypeCounts).map(([type, count]) => (
+                    <Checkbox
+                      key={type}
+                      checked={selectedTipoNegocio.includes(type)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedTipoNegocio([...selectedTipoNegocio, type]);
+                        } else {
+                          setSelectedTipoNegocio(selectedTipoNegocio.filter(t => t !== type));
+                        }
+                      }}
+                    >
+                      <span className="text-gray-700">{type} ({count})</span>
+                    </Checkbox>
+                  ))}
                 </div>
               </Collapse.Panel>
 
@@ -432,70 +502,21 @@ const AtendimentosPage = () => {
                 className="!border-0"
               >
                 <div className="space-y-3 pl-0">
-                  <Checkbox
-                    checked={selectedOrigem.includes('WhatsApp')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedOrigem([...selectedOrigem, 'WhatsApp']);
-                      } else {
-                        setSelectedOrigem(selectedOrigem.filter(o => o !== 'WhatsApp'));
-                      }
-                    }}
-                  >
-                    <span className="text-gray-700">WhatsApp</span>
-                  </Checkbox>
-                  
-                  <Checkbox
-                    checked={selectedOrigem.includes('Site imobiliária')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedOrigem([...selectedOrigem, 'Site imobiliária']);
-                      } else {
-                        setSelectedOrigem(selectedOrigem.filter(o => o !== 'Site imobiliária'));
-                      }
-                    }}
-                  >
-                    <span className="text-gray-700">Site imobiliária</span>
-                  </Checkbox>
-                  
-                  <Checkbox
-                    checked={selectedOrigem.includes('Facebook Ads')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedOrigem([...selectedOrigem, 'Facebook Ads']);
-                      } else {
-                        setSelectedOrigem(selectedOrigem.filter(o => o !== 'Facebook Ads'));
-                      }
-                    }}
-                  >
-                    <span className="text-gray-700">Facebook Ads</span>
-                  </Checkbox>
-                  
-                  <Checkbox
-                    checked={selectedOrigem.includes('OLX')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedOrigem([...selectedOrigem, 'OLX']);
-                      } else {
-                        setSelectedOrigem(selectedOrigem.filter(o => o !== 'OLX'));
-                      }
-                    }}
-                  >
-                    <span className="text-gray-700">OLX</span>
-                  </Checkbox>
-                  
-                  <Checkbox
-                    checked={selectedOrigem.includes('Chaves na mão')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedOrigem([...selectedOrigem, 'Chaves na mão']);
-                      } else {
-                        setSelectedOrigem(selectedOrigem.filter(o => o !== 'Chaves na mão'));
-                      }
-                    }}
-                  >
-                    <span className="text-gray-700">Chaves na mão</span>
-                  </Checkbox>
+                  {Object.entries(sourceCounts).map(([source, count]) => (
+                    <Checkbox
+                      key={source}
+                      checked={selectedOrigem.includes(source)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedOrigem([...selectedOrigem, source]);
+                        } else {
+                          setSelectedOrigem(selectedOrigem.filter(o => o !== source));
+                        }
+                      }}
+                    >
+                      <span className="text-gray-700">{source} ({count})</span>
+                    </Checkbox>
+                  ))}
                 </div>
               </Collapse.Panel>
 
