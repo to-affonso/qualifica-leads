@@ -11,7 +11,9 @@ import {
   Breadcrumb,
   Input,
   Dropdown,
-  Tooltip
+  Tooltip,
+  Spin,
+  Alert
 } from 'antd';
 import { 
   ArrowLeftOutlined,
@@ -28,41 +30,36 @@ import {
   WhatsAppOutlined
 } from '@ant-design/icons';
 import MainLayout from '@/components/layout/MainLayout';
+import { formatPhone, formatDate } from '@/utils/leadsData';
 
 const { Title, Text } = Typography;
 
-// Mock data for the lead details
-const mockLeadData = {
-  '1': {
-    nome: 'Aparecida Silva',
-    telefone: '(11) 96547-8974',
-    email: 'aparecida.silva@gmail.com',
-    status: 'Novo',
-    origem: 'WhatsApp',
-    tipoNegocio: 'Locação',
-    mensagemInicial: 'Gostaria de ajuda para encontrar um apartamento para alugar',
-    contatoInicial: '15/08/2024 • 13:35',
-    ultimoContato: '15/08/2024 • 14:30',
-    integracaoCRM: 'Não pronto',
-    corretorResponsavel: 'Não atribuído',
-    resumoGeral: 'Aparecida entrou em contato pelo WhatsApp, buscando um apartamento para alugar o mais rápido possível. Ela precisa se mudar em 30 dias e busca opções. O contato inicial foi promissor, com grande potencial de locação.',
-    avisoIA: 'Resumo gerado por IA e pode ter informações errôneas ou faltantes. Revise os dados analisando os dados de origem.',
-    // Dados de interesse do lead
-    interesse: {
-      tipoNegocio: 'Locação',
-      cidade: 'São Paulo',
-      bairros: 'Vila Mariana, Paraíso, Bela Vista',
-      tipoImovel: 'Apartamento',
-      quartos: '+2',
-      suites: '-',
-      banheiros: '+1',
-      vagas: '+1',
-      mobiliado: 'Não',
-      petFriendly: 'Sim',
-      valorLocacao: 'R$ 3.000,00',
-      valorTotal: 'R$ 4.500,00'
-    }
-  }
+// Interface para os dados do lead do JSON
+interface LeadData {
+  leadId: string;
+  agencyId: string;
+  name: string;
+  phone: string;
+  email: string;
+  status: string;
+  businessInterest: string;
+  propertyType: string;
+  visitInterest: string;
+  sourceChannel: string;
+  creationDate: string;
+  lastUpdate: string;
+}
+
+// Mapeamento de status para normalizar inconsistências
+const statusMapping: Record<string, string> = {
+  'Sem retorno': 'Sem resposta',
+  'Assumido pela imobiliária': 'Intervenção humana',
+  'Em atendimento': 'Em atendimento',
+  'Concluído': 'Concluído',
+  'Ajuda solicitada': 'Ajuda solicitada',
+  'Número inválido': 'Número inválido',
+  'Sem resposta': 'Sem resposta',
+  'Intervenção humana': 'Intervenção humana',
 };
 
 // Mock data for properties of interest
@@ -185,9 +182,120 @@ const AtendimentoDetalhesContent = () => {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState('detalhes');
   const [messageText, setMessageText] = useState('');
+  const [leadData, setLeadData] = useState<LeadData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  const leadId = searchParams.get('id') || '1'; // Default to '1' if no ID provided
-  const leadData = mockLeadData[leadId as keyof typeof mockLeadData];
+  const leadId = searchParams.get('id');
+
+  // Carregar dados do lead
+  useEffect(() => {
+    const loadLeadData = async () => {
+      if (!leadId) {
+        setError('ID do lead não fornecido');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await fetch('/db/leads_mock.json');
+        if (!response.ok) {
+          throw new Error(`Erro ao carregar dados: ${response.status}`);
+        }
+        
+        const leadsData: LeadData[] = await response.json();
+        const lead = leadsData.find(l => l.leadId === leadId);
+        
+        if (!lead) {
+          setError('Atendimento não encontrado');
+        } else {
+          setLeadData(lead);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar dados do lead:', err);
+        setError('Erro ao carregar dados do atendimento. Tente novamente.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadLeadData();
+  }, [leadId]);
+
+  // Função para formatar data para exibição brasileira
+  const formatDateForDisplay = (isoDate: string): string => {
+    try {
+      const date = new Date(isoDate);
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      
+      return `${day}/${month}/${year} • ${hours}:${minutes}`;
+    } catch (error) {
+      console.error('Erro ao formatar data:', error);
+      return isoDate;
+    }
+  };
+
+  // Dados de marcação (mantidos como estavam)
+  const mockDataPlaceholders = {
+    mensagemInicial: 'Gostaria de ajuda para encontrar um apartamento para alugar',
+    integracaoCRM: 'Não pronto',
+    corretorResponsavel: 'Não atribuído',
+    resumoGeral: `${leadData?.name || 'O lead'} entrou em contato pelo ${leadData?.sourceChannel || 'canal de origem'}, demonstrando interesse em ${leadData?.businessInterest?.toLowerCase() || 'negócio imobiliário'}. O contato inicial foi registrado e está aguardando atendimento adequado para prosseguir com o processo.`,
+    avisoIA: 'Resumo gerado por IA e pode ter informações errôneas ou faltantes. Revise os dados analisando os dados de origem.',
+    // Dados de interesse do lead (mantidos como marcação)
+    interesse: {
+      cidade: 'São Paulo',
+      bairros: 'Vila Mariana, Paraíso, Bela Vista',
+      quartos: '+2',
+      suites: '-',
+      banheiros: '+1',
+      vagas: '+1',
+      mobiliado: 'Não',
+      petFriendly: 'Sim',
+      valorLocacao: 'R$ 3.000,00',
+      valorTotal: 'R$ 4.500,00'
+    }
+  };
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Spin size="large" />
+            <p className="text-gray-600 mt-4">Carregando detalhes do atendimento...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error || !leadData) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <Alert
+            message="Erro ao carregar atendimento"
+            description={error || 'Atendimento não encontrado'}
+            type="error"
+            showIcon
+            action={
+              <Button onClick={() => router.push('/atendimentos')}>
+                Voltar para atendimentos
+              </Button>
+            }
+          />
+        </div>
+      </MainLayout>
+    );
+  }
 
   // Property Card Component for Interest Tab
   const PropertyInterestCard = ({ property, isOtherProperty = false }: { property: any, isOtherProperty?: boolean }) => (
@@ -408,21 +516,26 @@ const AtendimentoDetalhesContent = () => {
         {/* Header Section */}
         <div className="px-6 py-6">
           {/* Breadcrumb */}
-          <Breadcrumb className="mb-4">
-            <Breadcrumb.Item>
-              <Button 
-                type="link" 
-                className="!p-0 !h-auto hover:opacity-80"
-                style={{ color: '#697077' }}
-                onClick={() => router.push('/atendimentos')}
-              >
-                Atendimentos
-              </Button>
-            </Breadcrumb.Item>
-            <Breadcrumb.Item>
-              <span className="text-gray-600">{leadData.nome}</span>
-            </Breadcrumb.Item>
-          </Breadcrumb>
+          <Breadcrumb 
+            className="mb-4"
+            items={[
+              {
+                title: (
+                  <Button 
+                    type="link" 
+                    className="!p-0 !h-auto hover:opacity-80"
+                    style={{ color: '#697077' }}
+                    onClick={() => router.push('/atendimentos')}
+                  >
+                    Atendimentos
+                  </Button>
+                )
+              },
+              {
+                title: <span className="text-gray-600">{leadData.name}</span>
+              }
+            ]}
+          />
 
           {/* Title and Back Button */}
           <div className="flex items-center gap-3 mb-2">
@@ -433,19 +546,19 @@ const AtendimentoDetalhesContent = () => {
               className="!p-2 !w-auto !h-auto text-gray-600 hover:text-gray-800"
             />
             <Title level={2} className="!mb-0 !mt-0">
-              {leadData.nome}
+              {leadData.name}
             </Title>
             <Tag 
               className="ml-2 px-3 py-1 rounded-full border-0"
               style={{ backgroundColor: '#697077', color: '#ffffff' }}
             >
-              {leadData.status}
+              {statusMapping[leadData.status] || leadData.status}
             </Tag>
           </div>
 
           {/* Last Update */}
           <Text className="text-gray-500 text-sm">
-            Última atualização: {leadData.ultimoContato}
+            Última atualização: {formatDateForDisplay(leadData.lastUpdate)}
           </Text>
 
           {/* Tabs */}
@@ -471,7 +584,7 @@ const AtendimentoDetalhesContent = () => {
               </div>
               <div className="mb-6">
                 <Text className="text-gray-700 leading-relaxed">
-                  {leadData.resumoGeral}
+                  {mockDataPlaceholders.resumoGeral}
                 </Text>
               </div>
               <div style={{ 
@@ -486,7 +599,7 @@ const AtendimentoDetalhesContent = () => {
                 color: '#6b7280'
               }}>
                 <WarningOutlined style={{ color: '#6b7280', fontSize: '16px' }} />
-                <span>{leadData.avisoIA}</span>
+                <span>{mockDataPlaceholders.avisoIA}</span>
               </div>
             </Card>
 
@@ -504,13 +617,13 @@ const AtendimentoDetalhesContent = () => {
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Nome:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.nome}</Text>
+                      <Text className="text-gray-900">{leadData.name}</Text>
                     </div>
                   </div>
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Telefone:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.telefone}</Text>
+                      <Text className="text-gray-900">{formatPhone(leadData.phone)}</Text>
                     </div>
                   </div>
                   
@@ -523,46 +636,46 @@ const AtendimentoDetalhesContent = () => {
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Origem do lead:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.origem}</Text>
+                      <Text className="text-gray-900">{leadData.sourceChannel}</Text>
                     </div>
                   </div>
                   
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Mensagem de contato inicial:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.mensagemInicial}</Text>
+                      <Text className="text-gray-900">{mockDataPlaceholders.mensagemInicial}</Text>
                     </div>
                   </div>
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Tipo de negócio:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.tipoNegocio}</Text>
+                      <Text className="text-gray-900">{leadData.businessInterest}</Text>
                     </div>
                   </div>
                   
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Contato inicial:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.contatoInicial}</Text>
+                      <Text className="text-gray-900">{formatDateForDisplay(leadData.creationDate)}</Text>
                     </div>
                   </div>
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Último contato:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.ultimoContato}</Text>
+                      <Text className="text-gray-900">{formatDateForDisplay(leadData.lastUpdate)}</Text>
                     </div>
                   </div>
                  
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Corretor responsável:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.corretorResponsavel}</Text>
+                      <Text className="text-gray-900">{mockDataPlaceholders.corretorResponsavel}</Text>
                     </div>
                   </div>
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Integração CRM:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.integracaoCRM}</Text>
+                      <Text className="text-gray-900">{mockDataPlaceholders.integracaoCRM}</Text>
                     </div>
                   </div>
                 </div>
@@ -664,78 +777,78 @@ const AtendimentoDetalhesContent = () => {
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Tipo de negócio:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.interesse.tipoNegocio}</Text>
+                      <Text className="text-gray-900">{leadData.businessInterest}</Text>
                     </div>
                   </div>
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Quartos:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.interesse.quartos}</Text>
+                      <Text className="text-gray-900">{mockDataPlaceholders.interesse.quartos}</Text>
                     </div>
                   </div>
                   
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Cidade:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.interesse.cidade}</Text>
+                      <Text className="text-gray-900">{mockDataPlaceholders.interesse.cidade}</Text>
                     </div>
                   </div>
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Suítes:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.interesse.suites}</Text>
+                      <Text className="text-gray-900">{mockDataPlaceholders.interesse.suites}</Text>
                     </div>
                   </div>
                   
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Bairro(s):</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.interesse.bairros}</Text>
+                      <Text className="text-gray-900">{mockDataPlaceholders.interesse.bairros}</Text>
                     </div>
                   </div>
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Banheiros:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.interesse.banheiros}</Text>
+                      <Text className="text-gray-900">{mockDataPlaceholders.interesse.banheiros}</Text>
                     </div>
                   </div>
                   
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Tipo de imóvel:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.interesse.tipoImovel}</Text>
+                      <Text className="text-gray-900">{leadData.propertyType}</Text>
                     </div>
                   </div>
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Vagas:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.interesse.vagas}</Text>
+                      <Text className="text-gray-900">{mockDataPlaceholders.interesse.vagas}</Text>
                     </div>
                   </div>
                   
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Valor de locação desejado:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.interesse.valorLocacao}</Text>
+                      <Text className="text-gray-900">{mockDataPlaceholders.interesse.valorLocacao}</Text>
                     </div>
                   </div>
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Mobiliado:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.interesse.mobiliado}</Text>
+                      <Text className="text-gray-900">{mockDataPlaceholders.interesse.mobiliado}</Text>
                     </div>
                   </div>
                   
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Valor total desejado:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.interesse.valorTotal}</Text>
+                      <Text className="text-gray-900">{mockDataPlaceholders.interesse.valorTotal}</Text>
                     </div>
                   </div>
                   <div>
                     <Text className="text-sm font-medium text-gray-600">Pet-friendly:</Text>
                     <div className="mt-1">
-                      <Text className="text-gray-900">{leadData.interesse.petFriendly}</Text>
+                      <Text className="text-gray-900">{mockDataPlaceholders.interesse.petFriendly}</Text>
                     </div>
                   </div>
                 </div>

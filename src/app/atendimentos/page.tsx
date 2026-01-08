@@ -8,22 +8,17 @@ import {
   Tabs, 
   Table, 
   Tag, 
-  Drawer,
-  Collapse,
-  Checkbox,
-  DatePicker,
-  Space,
   Spin,
   Alert
 } from 'antd';
 import { 
   SearchOutlined, 
   FilterOutlined,
-  UpOutlined,
-  DownOutlined
+  CloseOutlined
 } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
+import FilterModal, { FilterValues } from '@/components/modals/FilterModal';
 import { 
   loadLeadsData, 
   countLeadsByStatus, 
@@ -51,15 +46,20 @@ const AtendimentosPage = () => {
   const [sourceCounts, setSourceCounts] = useState<Record<string, number>>({});
   
   // Estados existentes
-  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('todos');
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Filter states
-  const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
-  const [selectedTipoNegocio, setSelectedTipoNegocio] = useState<string[]>([]);
-  const [selectedOrigem, setSelectedOrigem] = useState<string[]>([]);
-  const [dateRange, setDateRange] = useState<[any, any] | null>(null);
+  // Filter states - usando o novo formato
+  const [appliedFilters, setAppliedFilters] = useState<FilterValues>({
+    status: [],
+    tipoNegocio: [],
+    tipoImovel: [],
+    interesseVisita: [],
+    origem: [],
+    dataPrimeiroContato: null,
+    dataUltimoContato: null
+  });
 
   // Carregar dados do JSON
   useEffect(() => {
@@ -96,7 +96,53 @@ const AtendimentosPage = () => {
     loadData();
   }, []);
 
-  // Filtrar dados baseado na aba ativa e termo de busca
+  // Função para aplicar filtros
+  const handleApplyFilters = (filters: FilterValues) => {
+    setAppliedFilters(filters);
+  };
+
+  // Função para remover um filtro específico
+  const removeFilter = (filterType: keyof FilterValues, value: string) => {
+    const newFilters = { ...appliedFilters };
+    if (Array.isArray(newFilters[filterType])) {
+      (newFilters[filterType] as string[]) = (newFilters[filterType] as string[]).filter(item => item !== value);
+    }
+    setAppliedFilters(newFilters);
+  };
+
+  // Função para limpar todos os filtros
+  const clearAllFilters = () => {
+    setAppliedFilters({
+      status: [],
+      tipoNegocio: [],
+      tipoImovel: [],
+      interesseVisita: [],
+      origem: [],
+      dataPrimeiroContato: null,
+      dataUltimoContato: null
+    });
+  };
+
+  // Função para verificar se há filtros aplicados
+  const hasActiveFilters = () => {
+    return appliedFilters.status.length > 0 ||
+           appliedFilters.tipoNegocio.length > 0 ||
+           appliedFilters.tipoImovel.length > 0 ||
+           appliedFilters.interesseVisita.length > 0 ||
+           appliedFilters.origem.length > 0 ||
+           appliedFilters.dataPrimeiroContato !== null ||
+           appliedFilters.dataUltimoContato !== null;
+  };
+
+  // Função para formatar data para exibição
+  const formatDateRange = (dateRange: [any, any] | null) => {
+    if (!dateRange || !dateRange[0] || !dateRange[1]) return '';
+    const startDate = dateRange[0].format('DD/MM/YYYY');
+    const endDate = dateRange[1].format('DD/MM/YYYY');
+    return `${startDate} a ${endDate}`;
+  };
+
+  // Filtrar dados baseado na aba ativa, termo de busca e filtros aplicados
   useEffect(() => {
     if (mockData.length === 0) return;
     
@@ -123,6 +169,19 @@ const AtendimentosPage = () => {
         break;
     }
 
+    // Aplicar filtros do modal
+    if (appliedFilters.status.length > 0) {
+      filtered = filtered.filter(lead => appliedFilters.status.includes(lead.status));
+    }
+
+    if (appliedFilters.tipoNegocio.length > 0) {
+      filtered = filtered.filter(lead => appliedFilters.tipoNegocio.includes(lead.tipoNegocio));
+    }
+
+    if (appliedFilters.origem.length > 0) {
+      filtered = filtered.filter(lead => appliedFilters.origem.includes(lead.origem));
+    }
+
     // Filtrar por termo de busca
     if (searchTerm) {
       filtered = filtered.filter(lead =>
@@ -135,7 +194,7 @@ const AtendimentosPage = () => {
     }
 
     setFilteredData(filtered);
-  }, [activeTab, searchTerm, mockData, originalData]);
+  }, [activeTab, searchTerm, mockData, originalData, appliedFilters]);
 
   // Status tag colors and styles
   const getStatusStyle = (status: string) => {
@@ -178,8 +237,11 @@ const AtendimentosPage = () => {
       width: 150,
       render: (status: string) => (
         <Tag 
-          style={getStatusStyle(status)}
-          className="rounded-full px-3 py-1 border-0"
+          style={{
+            ...getStatusStyle(status),
+            borderRadius: '4px'
+          }}
+          className="px-3 py-1 border-0"
         >
           {status}
         </Tag>
@@ -309,12 +371,183 @@ const AtendimentosPage = () => {
             </div>
             <Button
               icon={<FilterOutlined />}
-              onClick={() => setFilterDrawerOpen(true)}
+              onClick={() => setFilterModalOpen(true)}
               className="h-10 px-4"
             >
               Filtrar
             </Button>
           </div>
+
+          {/* Applied Filters Section */}
+          {hasActiveFilters() && (
+            <div className="mb-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-gray-600 font-medium">Filtros:</span>
+                
+                {/* Status filters */}
+                {appliedFilters.status.map((status) => (
+                  <Tag
+                    key={`status-${status}`}
+                    closable
+                    onClose={() => removeFilter('status', status)}
+                    style={{
+                      backgroundColor: '#E4F0ED',
+                      border: '1px solid #E4F0ED',
+                      color: '#191F23',
+                      borderRadius: '4px',
+                      padding: '4px 12px',
+                      fontSize: '12px',
+                      fontWeight: 500
+                    }}
+                    closeIcon={<CloseOutlined style={{ fontSize: '10px', color: '#191F23' }} />}
+                  >
+                    Status: {status}
+                  </Tag>
+                ))}
+
+                {/* Tipo de negócio filters */}
+                {appliedFilters.tipoNegocio.map((tipo) => (
+                  <Tag
+                    key={`tipo-negocio-${tipo}`}
+                    closable
+                    onClose={() => removeFilter('tipoNegocio', tipo)}
+                    style={{
+                      backgroundColor: '#E4F0ED',
+                      border: '1px solid #E4F0ED',
+                      color: '#191F23',
+                      borderRadius: '4px',
+                      padding: '4px 12px',
+                      fontSize: '12px',
+                      fontWeight: 500
+                    }}
+                    closeIcon={<CloseOutlined style={{ fontSize: '10px', color: '#191F23' }} />}
+                  >
+                    Tipo de negócio: {tipo}
+                  </Tag>
+                ))}
+
+                {/* Tipo de imóvel filters */}
+                {appliedFilters.tipoImovel.map((tipo) => (
+                  <Tag
+                    key={`tipo-imovel-${tipo}`}
+                    closable
+                    onClose={() => removeFilter('tipoImovel', tipo)}
+                    style={{
+                      backgroundColor: '#E4F0ED',
+                      border: '1px solid #E4F0ED',
+                      color: '#191F23',
+                      borderRadius: '4px',
+                      padding: '4px 12px',
+                      fontSize: '12px',
+                      fontWeight: 500
+                    }}
+                    closeIcon={<CloseOutlined style={{ fontSize: '10px', color: '#191F23' }} />}
+                  >
+                    Tipo de imóvel: {tipo}
+                  </Tag>
+                ))}
+
+                {/* Interesse em visita filters */}
+                {appliedFilters.interesseVisita.map((interesse) => (
+                  <Tag
+                    key={`interesse-${interesse}`}
+                    closable
+                    onClose={() => removeFilter('interesseVisita', interesse)}
+                    style={{
+                      backgroundColor: '#E4F0ED',
+                      border: '1px solid #E4F0ED',
+                      color: '#191F23',
+                      borderRadius: '4px',
+                      padding: '4px 12px',
+                      fontSize: '12px',
+                      fontWeight: 500
+                    }}
+                    closeIcon={<CloseOutlined style={{ fontSize: '10px', color: '#191F23' }} />}
+                  >
+                    Interesse em visita: {interesse}
+                  </Tag>
+                ))}
+
+                {/* Origem filters */}
+                {appliedFilters.origem.map((origem) => (
+                  <Tag
+                    key={`origem-${origem}`}
+                    closable
+                    onClose={() => removeFilter('origem', origem)}
+                    style={{
+                      backgroundColor: '#E4F0ED',
+                      border: '1px solid #E4F0ED',
+                      color: '#191F23',
+                      borderRadius: '4px',
+                      padding: '4px 12px',
+                      fontSize: '12px',
+                      fontWeight: 500
+                    }}
+                    closeIcon={<CloseOutlined style={{ fontSize: '10px', color: '#191F23' }} />}
+                  >
+                    Origem: {origem}
+                  </Tag>
+                ))}
+
+                {/* Data primeiro contato filter */}
+                {appliedFilters.dataPrimeiroContato && (
+                  <Tag
+                    closable
+                    onClose={() => setAppliedFilters({ ...appliedFilters, dataPrimeiroContato: null })}
+                    style={{
+                      backgroundColor: '#E4F0ED',
+                      border: '1px solid #E4F0ED',
+                      color: '#191F23',
+                      borderRadius: '4px',
+                      padding: '4px 12px',
+                      fontSize: '12px',
+                      fontWeight: 500
+                    }}
+                    closeIcon={<CloseOutlined style={{ fontSize: '10px', color: '#191F23' }} />}
+                  >
+                    Data primeiro contato: {formatDateRange(appliedFilters.dataPrimeiroContato)}
+                  </Tag>
+                )}
+
+                {/* Data último contato filter */}
+                {appliedFilters.dataUltimoContato && (
+                  <Tag
+                    closable
+                    onClose={() => setAppliedFilters({ ...appliedFilters, dataUltimoContato: null })}
+                    style={{
+                      backgroundColor: '#E4F0ED',
+                      border: '1px solid #E4F0ED',
+                      color: '#191F23',
+                      borderRadius: '4px',
+                      padding: '4px 12px',
+                      fontSize: '12px',
+                      fontWeight: 500
+                    }}
+                    closeIcon={<CloseOutlined style={{ fontSize: '10px', color: '#191F23' }} />}
+                  >
+                    Data último contato: {formatDateRange(appliedFilters.dataUltimoContato)}
+                  </Tag>
+                )}
+
+                {/* Clear all filters button */}
+                <Button
+                  type="text"
+                  size="small"
+                  onClick={clearAllFilters}
+                  style={{
+                    color: '#20A483',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    padding: '4px 8px',
+                    height: 'auto'
+                  }}
+                  className="hover:bg-green-50"
+                >
+                  Limpar filtros
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Tabs Row */}
           <div className="flex items-center">
@@ -365,208 +598,27 @@ const AtendimentosPage = () => {
           )}
         </div>
 
-        {/* Filter Drawer */}
-        <Drawer
-          title="Filtros"
-          placement="right"
-          onClose={() => setFilterDrawerOpen(false)}
-          open={filterDrawerOpen}
-          width={400}
-          className="filter-drawer"
-        >
-          <div className="space-y-4">
-            <Collapse
-              defaultActiveKey={['status']}
-              ghost
-              expandIcon={({ isActive }) => 
-                isActive ? <UpOutlined /> : <DownOutlined />
-              }
-              className="filter-collapse"
-            >
-              {/* Status Filter */}
-              <Collapse.Panel 
-                header={<span className="text-base font-medium text-gray-700">Status</span>} 
-                key="status"
-                className="!border-0"
-              >
-                <div className="space-y-3 pl-0">
-                  <Checkbox
-                    checked={selectedStatus.includes('Em atendimento')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedStatus([...selectedStatus, 'Em atendimento']);
-                      } else {
-                        setSelectedStatus(selectedStatus.filter(s => s !== 'Em atendimento'));
-                      }
-                    }}
-                  >
-                    <span className="text-gray-700">Em atendimento ({statusCounts['Em atendimento'] || 0})</span>
-                  </Checkbox>
-                  
-                  <Checkbox
-                    checked={selectedStatus.includes('Concluído')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedStatus([...selectedStatus, 'Concluído']);
-                      } else {
-                        setSelectedStatus(selectedStatus.filter(s => s !== 'Concluído'));
-                      }
-                    }}
-                  >
-                    <span className="text-gray-700">Concluído ({statusCounts['Concluído'] || 0})</span>
-                  </Checkbox>
-                  
-                  <Checkbox
-                    checked={selectedStatus.includes('Ajuda solicitada')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedStatus([...selectedStatus, 'Ajuda solicitada']);
-                      } else {
-                        setSelectedStatus(selectedStatus.filter(s => s !== 'Ajuda solicitada'));
-                      }
-                    }}
-                  >
-                    <span className="text-gray-700">Ajuda solicitada ({statusCounts['Ajuda solicitada'] || 0})</span>
-                  </Checkbox>
-                  
-                  <Checkbox
-                    checked={selectedStatus.includes('Sem resposta')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedStatus([...selectedStatus, 'Sem resposta']);
-                      } else {
-                        setSelectedStatus(selectedStatus.filter(s => s !== 'Sem resposta'));
-                      }
-                    }}
-                  >
-                    <span className="text-gray-700">Sem resposta ({statusCounts['Sem resposta'] || 0})</span>
-                  </Checkbox>
-                  
-                  <Checkbox
-                    checked={selectedStatus.includes('Número inválido')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedStatus([...selectedStatus, 'Número inválido']);
-                      } else {
-                        setSelectedStatus(selectedStatus.filter(s => s !== 'Número inválido'));
-                      }
-                    }}
-                  >
-                    <span className="text-gray-700">Número inválido ({statusCounts['Número inválido'] || 0})</span>
-                  </Checkbox>
-                  
-                  <Checkbox
-                    checked={selectedStatus.includes('Intervenção humana')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedStatus([...selectedStatus, 'Intervenção humana']);
-                      } else {
-                        setSelectedStatus(selectedStatus.filter(s => s !== 'Intervenção humana'));
-                      }
-                    }}
-                  >
-                    <span className="text-gray-700">Intervenção humana ({statusCounts['Intervenção humana'] || 0})</span>
-                  </Checkbox>
-                </div>
-              </Collapse.Panel>
-
-              {/* Tipo de Negócio Filter */}
-              <Collapse.Panel 
-                header={<span className="text-base font-medium text-gray-700">Tipo de negócio</span>} 
-                key="tipo-negocio"
-                className="!border-0"
-              >
-                <div className="space-y-3 pl-0">
-                  {Object.entries(businessTypeCounts).map(([type, count]) => (
-                    <Checkbox
-                      key={type}
-                      checked={selectedTipoNegocio.includes(type)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedTipoNegocio([...selectedTipoNegocio, type]);
-                        } else {
-                          setSelectedTipoNegocio(selectedTipoNegocio.filter(t => t !== type));
-                        }
-                      }}
-                    >
-                      <span className="text-gray-700">{type} ({count})</span>
-                    </Checkbox>
-                  ))}
-                </div>
-              </Collapse.Panel>
-
-              {/* Origem Filter */}
-              <Collapse.Panel 
-                header={<span className="text-base font-medium text-gray-700">Origem</span>} 
-                key="origem"
-                className="!border-0"
-              >
-                <div className="space-y-3 pl-0">
-                  {Object.entries(sourceCounts).map(([source, count]) => (
-                    <Checkbox
-                      key={source}
-                      checked={selectedOrigem.includes(source)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedOrigem([...selectedOrigem, source]);
-                        } else {
-                          setSelectedOrigem(selectedOrigem.filter(o => o !== source));
-                        }
-                      }}
-                    >
-                      <span className="text-gray-700">{source} ({count})</span>
-                    </Checkbox>
-                  ))}
-                </div>
-              </Collapse.Panel>
-
-              {/* Período Filter */}
-              <Collapse.Panel 
-                header={<span className="text-base font-medium text-gray-700">Período</span>} 
-                key="periodo"
-                className="!border-0"
-              >
-                <div className="space-y-3 pl-0">
-                  <Space direction="vertical" className="w-full">
-                    <DatePicker.RangePicker
-                      placeholder={['Data inicial', 'Data final']}
-                      className="w-full"
-                      format="DD/MM/YYYY"
-                      value={dateRange}
-                      onChange={setDateRange}
-                    />
-                  </Space>
-                </div>
-              </Collapse.Panel>
-            </Collapse>
-
-            {/* Filter Actions */}
-            <div className="pt-6 border-t border-gray-200">
-              <Space className="w-full justify-between">
-                <Button 
-                  type="text" 
-                  onClick={() => {
-                    setSelectedStatus([]);
-                    setSelectedTipoNegocio([]);
-                    setSelectedOrigem([]);
-                    setDateRange(null);
-                  }}
-                >
-                  Limpar filtros
-                </Button>
-                <Button 
-                  type="primary"
-                  onClick={() => {
-                    // Apply filters logic here
-                    setFilterDrawerOpen(false);
-                  }}
-                >
-                  Aplicar filtros
-                </Button>
-              </Space>
-            </div>
-          </div>
-        </Drawer>
+        {/* Filter Modal */}
+        <FilterModal
+          open={filterModalOpen}
+          onClose={() => setFilterModalOpen(false)}
+          onApply={handleApplyFilters}
+          statusOptions={Object.entries(statusCounts).map(([status, count]) => ({
+            label: status,
+            value: status,
+            count
+          }))}
+          businessTypeOptions={Object.entries(businessTypeCounts).map(([type, count]) => ({
+            label: type,
+            value: type,
+            count
+          }))}
+          sourceOptions={Object.entries(sourceCounts).map(([source, count]) => ({
+            label: source,
+            value: source,
+            count
+          }))}
+        />
       </div>
     </MainLayout>
   );
